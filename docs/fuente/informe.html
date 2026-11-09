@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Quiz 2 Gestión de Inventarios</title>
+<style>
+@page{size:letter;margin:18mm 17mm 16mm}
+body{font:10.4pt/1.38 'Segoe UI',Arial,sans-serif;color:#20262b;margin:0}
+h1{font:700 26pt/1.1 'Segoe UI',Arial;margin:0}
+h2{font:700 15pt/1.2 'Segoe UI',Arial;color:#1f4e79;margin:15pt 0 5pt;break-after:avoid}
+h3{font:600 11.5pt/1.25 'Segoe UI',Arial;margin:10pt 0 3pt;break-after:avoid}
+p{margin:0 0 6pt}
+ul,ol{margin:0 0 6pt;padding-left:17pt}
+li{margin-bottom:2pt}
+table{width:100%;border-collapse:collapse;margin:4pt 0 8pt;font-size:8.9pt;break-inside:auto}
+tr{break-inside:avoid}
+th{background:#2b3238;color:#fff;text-align:left;padding:3.5pt 5pt;font-weight:600}
+td{padding:3pt 5pt;border-bottom:.6pt solid #c9cfce;vertical-align:top}
+td.n,th.n{text-align:right;white-space:nowrap}
+tr.t td{font-weight:700;border-top:1.2pt solid #2b3238}
+.portada{height:244mm;display:flex;flex-direction:column;justify-content:space-between;break-after:page}
+.franja{height:13pt;background:repeating-linear-gradient(135deg,#f2b705 0 12pt,#2b3238 12pt 24pt);-webkit-print-color-adjust:exact}
+.portada dl{display:grid;grid-template-columns:120pt 1fr;gap:4pt 8pt;font-size:11.5pt}
+.portada dt{font-weight:600}.portada dd{margin:0}
+.nota{background:#f1f3f3;border-left:3pt solid #1f4e79;padding:5pt 8pt;margin:6pt 0;break-inside:avoid;font-size:9.6pt;-webkit-print-color-adjust:exact}
+.fig{text-align:center;margin:5pt 0;break-inside:avoid}.fig img,.fig svg{max-width:100%}
+.pie{font-size:8.6pt;color:#515c64;text-align:center;margin-top:2pt}
+th,.franja{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+</style></head><body>
+
+<section class="portada">
+ <div><div class="franja"></div>
+ <p style="margin-top:34pt;font-size:13pt">Quiz #2, trabajo práctico</p>
+ <h1 style="font-size:38pt">Gestión de Inventarios</h1>
+ <p style="font-size:15pt;margin-top:10pt">Análisis de compras y sistema Construct Inventory para Constructora Del Valle S.A.</p></div>
+ <dl><dt>Estudiante</dt><dd>[Nombre completo]</dd><dt>Curso</dt><dd>[Nombre del curso]</dd><dt>Docente</dt><dd>[Nombre del docente]</dd><dt>Repositorio</dt><dd>github.com/BryanGz25/QuizBackend2</dd><dt>Datos</dt><dd>Los datos de la Parte A son los del enunciado y son ficticios, como indica el documento.</dd></dl>
+</section>
+
+<h2>Introducción</h2>
+<p>Constructora Del Valle S.A. tiene tres áreas que compran por su cuenta: Obras, Mantenimiento y Bodega Central. Esa autonomía produce los síntomas que analiza este trabajo: un mismo insumo con varios nombres, órdenes repetidas, precios distintos al contrato y materiales que llegan al punto de reorden sin que nadie lo advierta.</p>
+<p>La Parte A resuelve los cinco ejercicios de compras e inventario. La Parte B construye la Opción 2 del enunciado, un control de inventario para construcción, con una API propia en Node.js conectada a MySQL. El sistema reproduce con sus datos semilla las cifras de la Parte A, y una prueba automatizada comprueba cada una.</p>
+<h3>Objetivos</h3>
+<ul><li>Definir el circuito de compra y corregir la matriz de aprobación frente al fraccionamiento.</li><li>Estandarizar las categorías de gasto y cuantificar el ahorro por consolidación.</li><li>Medir la fuga de valor de octubre separando lo demostrado de lo sospechoso.</li><li>Evaluar proveedores con criterios ponderados y calcular los niveles de reposición.</li><li>Implementar un sistema funcional que convierta esas reglas en controles automáticos.</li></ul>
+
+<h2>A1. Circuito de compra y matriz de aprobación</h2>
+<div class="fig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 118" width="100%" font-family="Segoe UI, Arial" font-size="13">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#1f4e79"/></marker></defs>
+<g fill="#fff" stroke="#2b3238"><rect x="2" y="8" width="120" height="50"/><rect x="154" y="8" width="120" height="50"/><rect x="306" y="8" width="120" height="50"/><rect x="458" y="8" width="120" height="50"/><rect x="610" y="8" width="120" height="50"/><rect x="762" y="8" width="120" height="50"/></g>
+<g text-anchor="middle" font-weight="600" fill="#20262b"><text x="62" y="38">Requisición</text><text x="214" y="38">Aprobación</text><text x="366" y="38">Orden de compra</text><text x="518" y="38">Recepción</text><text x="670" y="38">Factura</text><text x="822" y="38">Pago</text></g>
+<g stroke="#1f4e79" stroke-width="2" marker-end="url(#a)"><path d="M122 33L152 33"/><path d="M274 33L304 33"/><path d="M426 33L456 33"/><path d="M578 33L608 33"/><path d="M730 33L760 33"/></g>
+<path d="M366 58L366 98L670 98L670 60M518 58L518 98" fill="none" stroke="#a3241c" stroke-width="1.8"/><rect x="430" y="88" width="178" height="22" fill="#fff"/><text x="519" y="104" text-anchor="middle" fill="#a3241c" font-weight="600">Three-way match</text>
+</svg><div class="pie">Figura 1. Circuito de compra y punto del control de tres vías.</div></div>
+<table><tr><th>Etapa</th><th>Responsable</th><th>Actividad</th><th>Documento</th><th>Control interno</th><th>Riesgo que evita</th></tr>
+<tr><td>Requisición</td><td>Solicitante del área</td><td>Pide el material con código estándar y justificación</td><td>Requisición</td><td>Catálogo obligatorio; revisión de stock disponible</td><td>Compras innecesarias o sin clasificar</td></tr>
+<tr><td>Aprobación</td><td>Rol según la matriz</td><td>Autoriza por monto acumulado y verifica cotizaciones</td><td>Registro de aprobación</td><td>Quien solicita no aprueba; firma con fecha y comentario</td><td>Gasto no autorizado y fraccionamiento</td></tr>
+<tr><td>Orden de compra</td><td>Compras</td><td>Formaliza proveedor, precio y condiciones</td><td>Orden de compra</td><td>Precio contra contrato; detector de duplicados</td><td>Sobreprecio y órdenes repetidas</td></tr>
+<tr><td>Recepción</td><td>Bodega</td><td>Cuenta y verifica el material recibido</td><td>Boleta de recepción y entrada de inventario</td><td>Conteo contra la orden; no recibe de más</td><td>Faltantes y mercadería no pedida</td></tr>
+<tr><td>Factura</td><td>Cuentas por pagar</td><td>Registra la factura y la concilia</td><td>Factura del proveedor</td><td>Three-way match</td><td>Pagar lo no recibido o a otro precio</td></tr>
+<tr><td>Pago</td><td>Tesorería</td><td>Paga a la cuenta validada y en plazo</td><td>Comprobante de pago</td><td>Doble firma; separación de quien registra y quien paga</td><td>Pago doble o fraude</td></tr></table>
+<p><strong>Three-way match.</strong> Antes de pagar se comparan, línea por línea, la orden (qué se pidió y a qué precio), la recepción (qué llegó) y la factura (qué se cobra). Deben coincidir proveedor, artículo, cantidad y precio. Si difieren, la factura queda retenida hasta que Compras aclare la diferencia.</p>
+<h3>Análisis de la matriz propuesta</h3>
+<p>La matriz ordena bien los niveles de autoridad, pero evalúa cada compra de forma aislada. Quien divide una compra de ₡2 580 000 en dos de ₡1 290 000 evita a la Gerencia Financiera y una cotización. El caso no es hipotético: las órdenes OC-1041 y OC-1042 suman ₡2 580 000, y OC-1050 y OC-1053 suman ₡2 107 000. Cada par cruza el umbral de ₡2 000 000 sin que ninguna orden lo cruce por sí sola.</p>
+<table><tr><th style="width:27%">Mejora propuesta</th><th>Cómo opera</th></tr>
+<tr><td>Aprobar por monto acumulado</td><td>Se suman las solicitudes de la misma área y categoría, y del mismo proveedor si se indicó, dentro de una ventana de 15 días configurable. El aprobador se define por el acumulado.</td></tr>
+<tr><td>Separación de funciones</td><td>Nadie aprueba lo que solicitó; si su rol es el aprobador, el paso sube al tramo siguiente. Una persona no firma dos pasos del mismo documento.</td></tr>
+<tr><td>Cotizaciones verificadas</td><td>El documento no se aprueba con menos cotizaciones de las requeridas.</td></tr>
+<tr><td>Compras bajo contrato</td><td>Un contrato vigente ya negoció precio. Conviene un trámite más ágil, sujeto al precio pactado.</td></tr>
+<tr><td>Compras de emergencia</td><td>Vía excepcional con aprobación posterior obligatoria y un límite mensual, para que la urgencia no sirva de excusa.</td></tr>
+<tr><td>Límites sin vacíos</td><td>Cada tramo se define solo por su tope. Así no queda sin regla un monto entre ₡250 000 y ₡250 001.</td></tr>
+<tr><td>Registro de auditoría</td><td>Toda decisión guarda usuario, fecha, comentario y estado anterior, y permite revisar patrones justo bajo un umbral.</td></tr></table>
+
+<h2>A2. Clasificación de categorías de gasto</h2>
+<p>Patrón de código: <em>categoría-subcategoría-atributo</em>. El código identifica al insumo sin importar quién lo pida.</p>
+<table><tr><th>#</th><th>Descripción en el ERP</th><th>Categoría › subcategoría</th><th>Código estándar</th><th>Resultado</th></tr>
+<tr><td>1</td><td>Cemento gris 50 kg</td><td rowspan="3">Materiales de construcción › Cemento y agregados</td><td rowspan="3">MAT-CEM-GRIS50</td><td>Mismo insumo</td></tr>
+<tr><td>2</td><td>Saco cemento uso general</td><td>Mismo insumo</td></tr><tr><td>3</td><td>CEM-GRIS-50</td><td>Mismo insumo</td></tr>
+<tr><td>4</td><td>Varilla #3 grado 40</td><td rowspan="2">Materiales de construcción › Acero de refuerzo</td><td rowspan="2">MAT-ACE-VAR3G40</td><td>Mismo insumo</td></tr>
+<tr><td>5</td><td>Hierro 3/8 x 6 m</td><td>Equivalente por validar</td></tr>
+<tr><td>6</td><td>Guantes de nitrilo talla L</td><td rowspan="2">Equipo de protección personal › Protección de manos</td><td>EPP-MAN-NITL</td><td>Sin equivalente</td></tr>
+<tr><td>7</td><td>Guantes trabajo L</td><td>EPP-MAN-TRAL</td><td>Sin equivalente</td></tr>
+<tr><td>8</td><td>Tubo PVC 1/2 SDR 13.5</td><td>Plomería › Tubería</td><td>PLO-TUB-PVC12SDR135</td><td>Sin equivalente</td></tr></table>
+<p><strong>Justificación.</strong> La línea 2 no indica el peso, pero la misma compra (Proveedor B, 40 unidades a ₡7 100) aparece en A3 como “Cemento gris 50 kg”. La línea 3 es la OC-1061 de A3 con su código interno. La línea 5 figura en A3 como “Varilla #3”, y el número 3 corresponde a un diámetro de 3/8 de pulgada; sin embargo, su descripción no declara el grado 40, por lo que se trata como equivalente sujeto a validar la ficha técnica. Los guantes no se unifican: el nitrilo protege contra químicos y el de trabajo contra abrasión.</p>
+<table><tr><th>Insumo</th><th class="n">Cantidad</th><th class="n">Menor precio</th><th class="n">Costo original</th><th class="n">Costo consolidado</th><th class="n">Ahorro</th><th class="n">%</th></tr>
+<tr><td>Cemento gris 50 kg</td><td class="n">540</td><td class="n">₡6 300</td><td class="n">₡3 464 000</td><td class="n">₡3 402 000</td><td class="n">₡62 000</td><td class="n">1,79</td></tr>
+<tr><td>Varilla #3</td><td class="n">560</td><td class="n">₡2 150</td><td class="n">₡1 231 000</td><td class="n">₡1 204 000</td><td class="n">₡27 000</td><td class="n">2,19</td></tr>
+<tr class="t"><td>Total</td><td class="n">1 100</td><td></td><td class="n">₡4 695 000</td><td class="n">₡4 606 000</td><td class="n">₡89 000</td><td class="n">1,90</td></tr></table>
+<p>Costo original del cemento: 200 × 6 450 + 40 × 7 100 + 300 × 6 300. De la varilla: 500 × 2 150 + 60 × 2 600. Si la línea 5 no se valida, el ahorro confirmado baja a ₡62 000. El cálculo usa el menor precio observado, como pide el ejercicio; por eso la varilla usa ₡2 150 y no los ₡2 050 del contrato de A3.</p>
+<p><strong>Por qué sin clasificación no se negocia por volumen.</strong> Un proveedor concede descuentos sobre volúmenes demostrables. Si el ERP registra el mismo cemento con tres nombres, nadie puede afirmar que la empresa compra 540 sacos: solo ve tres compras menores. Sin esa cifra consolidada no hay argumento para negociar, ni forma de comparar precios entre áreas o de detectar que una paga más que otra por lo mismo.</p>
+
+<h2>A3. Análisis de gasto y fuga de valor</h2>
+<p>El documento define el gasto fuera de contrato como la compra hecha a un proveedor o a un precio distinto al negociado. Bajo esa definición se clasifican las órdenes. Esto no prueba un incumplimiento legal: el enunciado no indica que exista exclusividad con el Proveedor A.</p>
+<table><tr><th>OC</th><th>Proveedor</th><th>Artículo</th><th class="n">Cant.</th><th class="n">Precio</th><th class="n">Contrato</th><th class="n">Dif.</th><th class="n">Sobreprecio</th><th>Clasificación</th></tr>
+<tr><td>1041</td><td>A</td><td>Cemento</td><td class="n">200</td><td class="n">₡6 450</td><td class="n">₡6 300</td><td class="n">₡150</td><td class="n">₡30 000</td><td>Fuera por precio</td></tr>
+<tr><td>1042</td><td>A</td><td>Cemento</td><td class="n">200</td><td class="n">₡6 450</td><td class="n">₡6 300</td><td class="n">₡150</td><td class="n">₡30 000</td><td>Fuera por precio</td></tr>
+<tr><td>1047</td><td>B</td><td>Cemento</td><td class="n">40</td><td class="n">₡7 100</td><td class="n">₡6 300</td><td class="n">₡800</td><td class="n">₡32 000</td><td>Fuera por proveedor</td></tr>
+<tr><td>1050</td><td>C</td><td>Varilla</td><td class="n">500</td><td class="n">₡2 150</td><td class="n">₡2 050</td><td class="n">₡100</td><td class="n">₡50 000</td><td>Fuera por proveedor</td></tr>
+<tr><td>1053</td><td>C</td><td>Varilla</td><td class="n">480</td><td class="n">₡2 150</td><td class="n">₡2 050</td><td class="n">₡100</td><td class="n">₡48 000</td><td>Fuera por proveedor</td></tr>
+<tr><td>1058</td><td>D</td><td>Varilla</td><td class="n">60</td><td class="n">₡2 600</td><td class="n">₡2 050</td><td class="n">₡550</td><td class="n">₡33 000</td><td>Fuera por proveedor</td></tr>
+<tr><td>1061</td><td>A</td><td>Cemento</td><td class="n">300</td><td class="n">₡6 300</td><td class="n">₡6 300</td><td class="n">₡0</td><td class="n">₡0</td><td>Conforme</td></tr>
+<tr class="t"><td colspan="7">Sobreprecio total frente al contrato</td><td class="n">₡223 000</td><td></td></tr></table>
+<p>El gasto del mes es ₡7 017 000, de los cuales ₡5 127 000 (73,1 %) están fuera de contrato. El incumplimiento más claro es del Proveedor A, que facturó a Obras ₡6 450 teniendo un contrato de ₡6 300: ₡60 000 reclamables, o ₡30 000 si se anula la OC-1042. Las compras a otros proveedores son desviaciones que pagaron más que la referencia, no faltas demostradas.</p>
+<h3>Posibles duplicados</h3>
+<p>Criterio: mismo proveedor y artículo, cantidad igual o con diferencia de hasta 5 %, y fechas a un máximo de 3 días. Además se revisan el área y el precio.</p>
+<table><tr><th>Par</th><th>Evidencia</th><th>Confianza</th></tr>
+<tr><td>OC-1041 y OC-1042</td><td>Proveedor A, cemento, 200 unidades cada una, misma fecha, misma área y mismo precio</td><td>Alta</td></tr>
+<tr><td>OC-1050 y OC-1053</td><td>Proveedor C, varilla, 500 y 480 unidades (4 % de diferencia), un día de separación, misma área y mismo precio</td><td>Media</td></tr></table>
+<p>Son sospechas, no duplicaciones confirmadas: los datos no permiten descartar que fueran pedidos distintos para frentes de obra diferentes. Un dato apoya la sospecha, sin probarla: las líneas del ERP en A2 incluyen la OC-1041 y la OC-1050, pero no las OC-1042 y OC-1053.</p>
+<table><tr><th>Escenario</th><th>Cálculo</th><th class="n">Mensual</th><th class="n">Proyección anual</th></tr>
+<tr><td>Solo sobreprecio</td><td>Suma de sobreprecios de todas las órdenes ejecutadas</td><td class="n">₡223 000</td><td class="n">₡2 676 000</td></tr>
+<tr><td>Si OC-1042 es duplicada</td><td>223 000 − 30 000 + 1 290 000</td><td class="n">₡1 483 000</td><td class="n">₡17 796 000</td></tr>
+<tr><td>Si también OC-1053 lo es</td><td>1 483 000 − 48 000 + 1 032 000</td><td class="n">₡2 467 000</td><td class="n">₡29 604 000</td></tr></table>
+<p>Al tratar una orden como duplicada se resta su sobreprecio para no contarlo dos veces. La proyección multiplica un solo mes por 12 y debe leerse como orden de magnitud. Además, un material duplicado que se conserva en bodega inmoviliza capital; solo es pérdida total si no llega a consumirse.</p>
+<h3>Tres controles propuestos</h3>
+<ol><li><strong>Precio contra contrato al emitir la orden.</strong> El sistema compara cada línea con el contrato vigente y exige justificar cualquier diferencia o proveedor alterno.</li><li><strong>Detector de duplicados antes de aprobar.</strong> Una regla configurable marca la orden para revisión humana sin bloquearla y muestra sus motivos.</li><li><strong>Catálogo único y aprobación por acumulado.</strong> Solo se compra con código estándar y el aprobador se determina por lo acumulado en la ventana definida.</li></ol>
+
+<h2>A4. Evaluación de proveedores</h2>
+<p>Ejercicio académico con tres proveedores ficticios. Las notas ilustran el método y no describen empresas reales. Escala: 1 deficiente, 5 excelente.</p>
+<table><tr><th>Criterio</th><th class="n">Peso</th><th class="n">Alfa</th><th class="n">Pond.</th><th class="n">Beta</th><th class="n">Pond.</th><th class="n">Gamma</th><th class="n">Pond.</th></tr>
+<tr><td>Precio</td><td class="n">25 %</td><td class="n">4</td><td class="n">1,00</td><td class="n">3</td><td class="n">0,75</td><td class="n">5</td><td class="n">1,25</td></tr>
+<tr><td>Calidad</td><td class="n">25 %</td><td class="n">4</td><td class="n">1,00</td><td class="n">5</td><td class="n">1,25</td><td class="n">3</td><td class="n">0,75</td></tr>
+<tr><td>Cumplimiento de entregas</td><td class="n">20 %</td><td class="n">3</td><td class="n">0,60</td><td class="n">5</td><td class="n">1,00</td><td class="n">3</td><td class="n">0,60</td></tr>
+<tr><td>Condiciones de crédito</td><td class="n">10 %</td><td class="n">4</td><td class="n">0,40</td><td class="n">3</td><td class="n">0,30</td><td class="n">3</td><td class="n">0,30</td></tr>
+<tr><td>Servicio posventa</td><td class="n">10 %</td><td class="n">3</td><td class="n">0,30</td><td class="n">4</td><td class="n">0,40</td><td class="n">3</td><td class="n">0,30</td></tr>
+<tr><td>Riesgo de dependencia</td><td class="n">10 %</td><td class="n">3</td><td class="n">0,30</td><td class="n">3</td><td class="n">0,30</td><td class="n">4</td><td class="n">0,40</td></tr>
+<tr class="t"><td>Puntaje ponderado</td><td class="n">100 %</td><td></td><td class="n">3,60</td><td></td><td class="n">4,00</td><td></td><td class="n">3,60</td></tr></table>
+<p><strong>Pesos.</strong> Precio y calidad suman la mitad porque el material define el costo y la seguridad estructural. La entrega pesa 20 % porque un atraso detiene cuadrillas en obra. <strong>Notas.</strong> Gamma tiene el mejor precio, pero calidad y entregas regulares. Beta cuesta más y es la más confiable. Alfa ofrece equilibrio y el mejor crédito.</p>
+<p><strong>Recomendación: mantener dos proveedores estratégicos.</strong> Beta como principal por su calidad y cumplimiento, y Alfa como segundo: empata con Gamma en puntaje, pero supera su calidad, que es el criterio que más afecta a la obra. Consolidar en uno solo concentraría volumen, pero expondría a la empresa a desabastecimiento si ese proveedor falla, a perder poder de negociación con el tiempo y a quedar sin alternativa ya evaluada. Diversificar en muchos proveedores repetiría la dispersión que originó la fuga de A3.</p>
+
+<h2>A5. Niveles de stock y punto de reorden</h2>
+<p>Fórmulas del enunciado: SS = (demanda máxima − demanda promedio) × L; PR = d × L + SS.</p>
+<table><tr><th>Material</th><th class="n">d</th><th class="n">Máx.</th><th class="n">L</th><th class="n">SS</th><th class="n">PR</th><th class="n">Stock</th><th class="n">Dif.</th><th>Estado</th><th>Acción</th></tr>
+<tr><td>Cemento gris 50 kg</td><td class="n">40</td><td class="n">55</td><td class="n">3</td><td class="n">45</td><td class="n">165</td><td class="n">190</td><td class="n">+25</td><td>Sobre PR</td><td>Vigilar; lo cruza en un día</td></tr>
+<tr><td>Varilla #3</td><td class="n">120</td><td class="n">160</td><td class="n">5</td><td class="n">200</td><td class="n">800</td><td class="n">850</td><td class="n">+50</td><td>Sobre PR</td><td>Vigilar; lo cruza en un día</td></tr>
+<tr><td>Block 12 × 20 × 40</td><td class="n">600</td><td class="n">900</td><td class="n">4</td><td class="n">1 200</td><td class="n">3 600</td><td class="n">2 800</td><td class="n">−800</td><td>Bajo PR</td><td>Pedir hoy, prioridad 2</td></tr>
+<tr><td>Arena (m³)</td><td class="n">6</td><td class="n">10</td><td class="n">2</td><td class="n">8</td><td class="n">20</td><td class="n">14</td><td class="n">−6</td><td>Bajo PR</td><td>Pedir hoy, prioridad 1</td></tr></table>
+<p><strong>Deben reponerse hoy Arena y Block.</strong> La prioridad usa el stock como porcentaje del punto de reorden y el margen de cobertura frente al tiempo de entrega:</p>
+<table><tr><th>Material</th><th class="n">Stock / PR</th><th class="n">Cobertura promedio</th><th class="n">Margen sobre L</th><th class="n">Cobertura máxima</th><th class="n">Margen sobre L</th></tr>
+<tr><td>Arena</td><td class="n">70,0 %</td><td class="n">2,33 días</td><td class="n">+0,33</td><td class="n">1,40 días</td><td class="n">−0,60</td></tr>
+<tr><td>Block</td><td class="n">77,8 %</td><td class="n">4,67 días</td><td class="n">+0,67</td><td class="n">3,11 días</td><td class="n">−0,89</td></tr></table>
+<p>La Arena va primero por tener el menor porcentaje y solo un tercio de día de holgura con demanda normal. Con demanda máxima, Block queda peor en días absolutos, por lo que ambas órdenes deben emitirse hoy. Cemento y Varilla no requieren pedido hoy, pero cruzan su punto de reorden tras un día de demanda promedio (150 y 730 unidades).</p>
+<h3>Datos mínimos por movimiento</h3>
+<table><tr><th>Campo</th><th>Entrada</th><th>Salida</th><th>Traslado</th><th>Ajuste</th></tr>
+<tr><td>Material, cantidad y unidad</td><td>Sí</td><td>Sí</td><td>Sí</td><td>Sí</td></tr>
+<tr><td>Fecha, hora y usuario responsable</td><td>Sí</td><td>Sí</td><td>Sí</td><td>Sí</td></tr>
+<tr><td>Ubicación</td><td>Destino</td><td>Origen</td><td>Origen y destino</td><td>Origen o destino</td></tr>
+<tr><td>Documento de origen</td><td>Orden de compra y recepción</td><td>Vale de salida</td><td>Boleta de traslado</td><td>Acta de ajuste</td></tr>
+<tr><td>Observaciones</td><td>Opcional</td><td>Opcional</td><td>Opcional</td><td>Justificación obligatoria</td></tr></table>
+
+<h2>Parte B. Descripción del sistema</h2>
+<p>Construct Inventory implementa la Opción 2 mediante el Camino 2 del enunciado: API REST en Express, acceso a datos con Prisma, MySQL 8 y migraciones versionadas. Una interfaz React consume la API real.</p>
+<table><tr><th style="width:30%">Requisito o punto extra</th><th>Implementación</th></tr>
+<tr><td>Registro de materiales</td><td>Guarda mínimo, máximo, demanda y tiempo de entrega. El punto de reorden se calcula y la API rechaza que se digite.</td></tr>
+<tr><td>Movimientos y stock</td><td>Entrada, salida, traslado y ajuste con usuario, ubicación y documento. El stock se obtiene sumando movimientos.</td></tr>
+<tr><td>Alerta de reorden</td><td>Se evalúa al registrar cada movimiento y en una revisión programada. Una restricción única impide alertas repetidas.</td></tr>
+<tr><td>Compras duplicadas</td><td>Regla con ventana y tolerancia configurables. Muestra los motivos y queda para revisión humana sin bloquear.</td></tr>
+<tr><td>Trazabilidad</td><td>Por material, cada entrada se vincula con su orden, proveedor y recepción, seguida de los movimientos posteriores.</td></tr>
+<tr><td>Extra: dashboard</td><td>Trece secciones en React con indicadores y gráficos calculados en vivo.</td></tr>
+<tr><td>Extra: matriz de aprobación</td><td>La orden queda pendiente hasta que aprueba el rol correcto; incluye comité, rechazos y detección de fraccionamiento.</td></tr>
+<tr><td>Extra: pruebas</td><td>77 pruebas con Jest y Supertest contra una base MySQL real; todas pasaron en la última ejecución.</td></tr>
+<tr><td>Extra: integración</td><td>Una alerta genera una requisición y sugiere el proveedor de menor precio entre contratos y últimas compras.</td></tr></table>
+<h3>Decisiones que sostienen la integridad</h3>
+<ul><li><strong>Los movimientos son la fuente de verdad.</strong> No se editan ni se borran: un error se corrige con un ajuste justificado. La tabla <em>inventario</em> es un saldo derivado que cambia solo en la misma transacción, y un reporte de conciliación demuestra que coincide.</li><li><strong>Una salida no puede exceder el stock.</strong> Se ejecuta como actualización condicional, que InnoDB serializa; dos salidas simultáneas no consumen la misma existencia. Una restricción CHECK respalda la regla en la base.</li><li><strong>Sin operaciones duplicadas.</strong> Cada envío lleva una clave de idempotencia única; repetirlo devuelve el movimiento original.</li><li><strong>Parámetros consolidados.</strong> Los datos de A5 son de la empresa, así que el punto de reorden se compara con el stock total. Una bodega con demanda propia puede tener parámetros adicionales.</li><li><strong>Trazabilidad documental.</strong> Se conoce el documento de origen de cada entrada, pero no qué unidad física salió de cuál entrada: el sistema no maneja lotes, y materiales a granel como la arena tampoco lo permitirían con facilidad.</li></ul>
+<div class="fig"><img src="../arquitectura.png" style="width:82%"><div class="pie">Figura 2. Arquitectura por capas.</div></div>
+<h2>Modelo de datos</h2>
+<p>El modelo tiene 25 tablas normalizadas, con llaves foráneas, índices, restricciones únicas y CHECK. El detalle de cada tabla está en <em>docs/modelo-er.md</em>. Las relaciones hacia <em>usuarios</em> y entre bloques se muestran como campos FK para mantener legible el diagrama.</p>
+<div class="fig"><img src="../diagrama-er.png" style="width:100%;max-height:205mm"><div class="pie">Figura 3. Diagrama entidad-relación.</div></div>
+<h2>Datos semilla y supuestos</h2>
+<p>Provienen del documento: las 8 líneas del ERP, las 7 órdenes, el contrato, la matriz, demandas, tiempos de entrega y stocks. Son ficticios y están marcados en el código: usuarios, obras, bodegas, stock mínimo y máximo, y dos salidas de consumo (550 sacos y 190 varillas) que concilian lo recibido en octubre con el stock de A5.</p>
+<h2>Conclusiones</h2>
+<ul><li>La mayor fuga potencial de octubre no es el sobreprecio de ₡223 000, sino las posibles duplicaciones, que llevarían el impacto a ₡2 467 000 si se confirman.</li><li>Fraccionamiento y duplicidad pueden ser el mismo hecho visto desde dos controles: los dos pares sospechosos cruzan un umbral de aprobación.</li><li>Una clasificación común es el requisito para ver el volumen real y negociar por él.</li><li>Calcular el punto de reorden con la demanda máxima muestra que Arena y Block pueden agotarse antes de que llegue el pedido.</li><li>Derivar el stock de movimientos inmutables convierte la trazabilidad y la auditoría en consecuencias del diseño.</li></ul>
+<h2>Referencias</h2>
+<p>Documento del curso: <em>Quiz #2, Trabajo práctico, Gestión de Inventarios</em>. Fuente de todos los datos de la Parte A.<br>MySQL 8.0 Reference Manual, Oracle: dev.mysql.com/doc/refman/8.0/en. Prisma ORM Documentation: prisma.io/docs. Express: expressjs.com. React: react.dev. El código se desarrolló con asistencia de IA, como permite el enunciado.</p>
+</body></html>

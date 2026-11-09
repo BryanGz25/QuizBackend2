@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Diagrama ER</title>
+<style>
+body{margin:0;background:#fff;font-family:'Segoe UI',Arial,sans-serif}
+svg text{font-family:'Segoe UI',Arial,sans-serif}
+</style></head><body>
+<svg id="d" xmlns="http://www.w3.org/2000/svg" width="1500" height="1290" viewBox="0 0 1500 1290"></svg>
+<script>
+const W=250, H_L=19, H_T=28;
+const P=[
+{titulo:'Inventario',y:10,alto:450,t:{
+ categorias:[30,50,['PK id','codigo (UQ)','nombre','FK padre_id → categorias']],
+ materiales:[335,50,['PK id','codigo (UQ)','nombre, unidad','FK categoria_id','stock_minimo, stock_maximo','demanda_promedio_dia','demanda_maxima_dia','tiempo_entrega_dias']],
+ lineas_erp:[30,250,['PK id','numero (UQ)','descripcion_erp','FK area_id, proveedor_id','FK material_id','cantidad, precio_unitario','estado_equivalencia']],
+ inventario:[640,50,['PK FK material_id','PK FK bodega_id','cantidad (CHECK ≥ 0)']],
+ movimientos:[640,205,['PK id','tipo, cantidad (CHECK > 0)','FK material_id','FK bodega_origen_id','FK bodega_destino_id','FK usuario_id','documento_tipo, documento_numero','FK orden_compra_id','FK detalle_recepcion_id (UQ)','clave_idempotencia (UQ)']],
+ bodegas:[945,50,['PK id','codigo (UQ)','nombre','FK obra_id']],
+ obras:[1225,50,['PK id','codigo (UQ)','nombre']],
+ parametros_bodega:[945,235,['PK FK material_id','PK FK bodega_id','demanda_promedio_dia','demanda_maxima_dia','tiempo_entrega_dias']],
+ alertas:[1225,235,['PK id','FK material_id','FK bodega_id (null = consolidado)','stock_actual, punto_reorden','faltante, prioridad, estado','clave_activa (UQ)']],
+},r:[['categorias','materiales'],['lineas_erp','materiales',8],['materiales','inventario'],['materiales','movimientos'],['inventario','bodegas',1],['movimientos','bodegas',1],['bodegas','obras',2],['parametros_bodega','bodegas',3],['alertas','bodegas',3]]},
+{titulo:'Compras y aprobaciones',y:475,alto:590,t:{
+ proveedores:[30,50,['PK id','codigo (UQ)','nombre']],
+ contratos_precio:[30,205,['PK id','FK proveedor_id','FK material_id','precio (CHECK > 0)','vigente_desde, vigente_hasta']],
+ requisiciones:[335,50,['PK id','numero (UQ)','FK area_id, solicitante_id','FK proveedor_sugerido_id, alerta_id','estado, justificacion','monto_total, monto_evaluado','cotizaciones, cotizaciones_requeridas','fraccionamiento_sospechoso']],
+ detalle_requisicion:[335,270,['PK id','FK requisicion_id','FK material_id','cantidad, precio_estimado']],
+ aprobaciones:[640,50,['PK id','FK requisicion_id (o)','FK orden_compra_id','paso, FK rol_requerido_id','estado, FK usuario_id','fecha_decision, comentario','CHECK: una sola referencia']],
+ matriz_aprobacion:[640,270,['PK id','orden (UQ)','monto_hasta','FK rol_aprobador_id','cotizaciones_requeridas','requiere_comite']],
+ ordenes_compra:[945,50,['PK id','numero (UQ)','FK requisicion_id','FK proveedor_id, area_id','fecha_emision, estado','total, monto_evaluado','cotizaciones','FK creado_por_id']],
+ detalle_orden_compra:[945,270,['PK id','FK orden_compra_id','FK material_id','cantidad, precio_unitario']],
+ sospechas_duplicado:[640,425,['PK id','FK orden_a_id → ordenes_compra','FK orden_b_id → ordenes_compra','FK material_id','confianza, motivos (JSON)','estado, FK revisado_por_id','comentario']],
+ recepciones:[1225,50,['PK id','numero (UQ)','FK orden_compra_id','FK bodega_id, usuario_id','fecha, observaciones']],
+ detalle_recepciones:[1225,270,['PK id','FK recepcion_id','FK detalle_orden_id','cantidad_recibida (CHECK > 0)']],
+},r:[['proveedores','requisiciones'],['contratos_precio','proveedores',4],['requisiciones','detalle_requisicion',5],['requisiciones','aprobaciones'],['aprobaciones','ordenes_compra',1],['ordenes_compra','detalle_orden_compra',5],['ordenes_compra','recepciones'],['recepciones','detalle_recepciones',5],['detalle_orden_compra','detalle_recepciones']]},
+{titulo:'Seguridad y control',y:1080,alto:200,t:{
+ roles:[30,50,['PK id','codigo (UQ)','nombre']],
+ usuarios:[335,50,['PK id','email (UQ)','password_hash (bcrypt)','FK rol_id, area_id','activo']],
+ areas:[640,50,['PK id','nombre (UQ)']],
+ auditoria:[945,50,['PK id','FK usuario_id → usuarios','accion, entidad, entidad_id','antes, despues (JSON)','creado_en']],
+ parametros:[1225,50,['PK clave','valor, descripcion','(reglas configurables)']],
+},r:[['roles','usuarios'],['usuarios','areas',1]]},
+];
+const NS='http://www.w3.org/2000/svg',svg=document.getElementById('d');
+const el=(n,a,t)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);if(t!==undefined)e.textContent=t;svg.appendChild(e);return e};
+const alto=c=>H_T+c.length*H_L+8;
+for(const p of P){
+ el('rect',{x:10,y:p.y,width:1480,height:p.alto,fill:'#f6f7f6',stroke:'#c9cfce'});
+ el('text',{x:28,y:p.y+30,'font-size':21,'font-weight':700,fill:'#2b3238'},p.titulo);
+ const B={};for(const n in p.t){const [x,y,c]=p.t[n];B[n]={x,y:p.y+y,h:alto(c),c}}
+ for(const [a,b,modo] of p.r){
+  const A=B[a],C=B[b];let d;
+  const lab=(x,y,t)=>el('text',{x,y,'font-size':13,'font-weight':700,fill:'#a3241c'},t);
+  if(modo===5){const x=A.x+W/2;d=`M${x} ${A.y+A.h}L${x} ${C.y}`;lab(x+6,A.y+A.h+14,'1');lab(x+6,C.y-5,'N')}
+  else if(modo===4){const x=A.x+W/2;d=`M${x} ${A.y}L${x} ${C.y+C.h}`;lab(x+6,A.y-5,'N');lab(x+6,C.y+C.h+15,'1')}
+  else if(modo===3){const x=A.x+W/2>C.x+W/2?C.x+W-40:C.x+W/2;d=A.x===C.x?`M${x} ${A.y}L${x} ${C.y+C.h}`:`M${A.x} ${A.y+16}L${A.x-27} ${A.y+16}L${A.x-27} ${C.y+C.h-20}L${C.x+W} ${C.y+C.h-20}`;lab(A.x===C.x?x+6:A.x-20,A.y+(A.x===C.x?-5:12),'N');lab(A.x===C.x?x+6:C.x+W+5,A.x===C.x?C.y+C.h+15:C.y+C.h-24,'1')}
+  else if(modo===8){const y=A.y+36;const x=C.x+W/2;d=`M${A.x+W} ${y}L${x} ${y}L${x} ${C.y+C.h}`;lab(A.x+W+4,y-5,'N');lab(x+6,C.y+C.h+15,'1')}
+  else if(modo===6){const y=A.y+36;const x=C.x+W/2;d=`M${A.x+W} ${y}L${x} ${y}L${x} ${C.y+C.h}`; }
+  else{const y1=A.y+H_T+14,y2=C.y+H_T+14,mx=(A.x+W+C.x)/2;
+   const invierte=modo===1||modo===2;
+   d=`M${A.x+W} ${y1}L${mx} ${y1}L${mx} ${y2}L${C.x} ${y2}`;
+   lab(A.x+W+4,y1-5,invierte?'N':'1');lab(C.x-14,y2-5,invierte?'1':'N')}
+  el('path',{d,fill:'none',stroke:'#1f4e79','stroke-width':1.6});
+ }
+ for(const n in B){const {x,y,h,c}=B[n];
+  el('rect',{x,y,width:W,height:h,fill:'#fff',stroke:'#2b3238','stroke-width':1.2});
+  el('rect',{x,y,width:W,height:H_T,fill:'#2b3238'});
+  el('text',{x:x+10,y:y+19,'font-size':15,'font-weight':700,fill:'#fff'},n);
+  c.forEach((l,i)=>el('text',{x:x+10,y:y+H_T+18+i*H_L,'font-size':12.5,fill:l.startsWith('PK')?'#1f4e79':'#20262b','font-weight':l.startsWith('PK')?700:400},l));
+ }
+}
+</script></body></html>

@@ -1,0 +1,552 @@
+// CONSTRUCT INVENTORY PRO — modelo de datos.
+// Los modelos llevan el nombre exacto de la tabla para que el código y la base de datos se lean igual.
+// Las restricciones CHECK que Prisma no expresa están en la migración `restricciones_check`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+enum tipo_movimiento {
+  ENTRADA
+  SALIDA
+  TRASLADO
+  AJUSTE
+}
+
+enum tipo_documento {
+  ORDEN_COMPRA
+  VALE_SALIDA
+  BOLETA_TRASLADO
+  ACTA_AJUSTE
+  CARGA_INICIAL
+}
+
+enum estado_requisicion {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+  CONVERTIDA
+}
+
+enum estado_orden {
+  PENDIENTE_APROBACION
+  EMITIDA
+  RECIBIDA_PARCIAL
+  RECIBIDA
+  RECHAZADA
+  ANULADA
+}
+
+enum estado_aprobacion {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+  OMITIDA
+}
+
+enum estado_alerta {
+  PENDIENTE
+  ATENDIDA
+  CERRADA
+}
+
+enum prioridad_alerta {
+  CRITICA
+  ALTA
+  MEDIA
+}
+
+enum estado_sospecha {
+  PENDIENTE
+  CONFIRMADA
+  DESCARTADA
+}
+
+enum confianza_sospecha {
+  ALTA
+  MEDIA
+}
+
+enum estado_equivalencia {
+  EQUIVALENTE
+  EQUIVALENTE_POR_VALIDAR
+  SIN_EQUIVALENTE
+}
+
+// ---------- Seguridad y organización ----------
+
+model roles {
+  id       Int                 @id @default(autoincrement())
+  codigo   String              @unique @db.VarChar(40)
+  nombre   String              @db.VarChar(80)
+  usuarios usuarios[]
+  matriz   matriz_aprobacion[]
+  aprobaciones aprobaciones[]
+}
+
+model areas {
+  id           Int             @id @default(autoincrement())
+  nombre       String          @unique @db.VarChar(80)
+  usuarios     usuarios[]
+  requisiciones requisiciones[]
+  ordenes      ordenes_compra[]
+  lineas_erp   lineas_erp[]
+}
+
+model usuarios {
+  id            Int       @id @default(autoincrement())
+  nombre        String    @db.VarChar(120)
+  email         String    @unique @db.VarChar(160)
+  password_hash String    @db.VarChar(100)
+  rol_id        Int
+  area_id       Int?
+  activo        Boolean   @default(true)
+  creado_en     DateTime  @default(now())
+
+  rol           roles     @relation(fields: [rol_id], references: [id])
+  area          areas?    @relation(fields: [area_id], references: [id])
+  movimientos   movimientos[]
+  requisiciones requisiciones[]
+  ordenes       ordenes_compra[]
+  aprobaciones  aprobaciones[]
+  recepciones   recepciones[]
+  auditoria     auditoria[]
+  sospechas_revisadas sospechas_duplicado[]
+
+  @@index([rol_id])
+  @@index([area_id])
+}
+
+// ---------- Catálogos ----------
+
+model categorias {
+  id         Int          @id @default(autoincrement())
+  codigo     String       @unique @db.VarChar(20)
+  nombre     String       @db.VarChar(100)
+  padre_id   Int?
+  padre      categorias?  @relation("taxonomia", fields: [padre_id], references: [id])
+  hijas      categorias[] @relation("taxonomia")
+  materiales materiales[]
+
+  @@index([padre_id])
+}
+
+model materiales {
+  id                   Int       @id @default(autoincrement())
+  codigo               String    @unique @db.VarChar(40)
+  nombre               String    @db.VarChar(160)
+  unidad               String    @db.VarChar(20)
+  categoria_id         Int
+  stock_minimo         Decimal?  @db.Decimal(14, 3)
+  stock_maximo         Decimal?  @db.Decimal(14, 3)
+  demanda_promedio_dia Decimal?  @db.Decimal(14, 3)
+  demanda_maxima_dia   Decimal?  @db.Decimal(14, 3)
+  tiempo_entrega_dias  Int?
+  activo               Boolean   @default(true)
+  creado_en            DateTime  @default(now())
+  actualizado_en       DateTime  @updatedAt
+
+  categoria            categorias @relation(fields: [categoria_id], references: [id])
+  inventario           inventario[]
+  movimientos          movimientos[]
+  detalle_orden        detalle_orden_compra[]
+  detalle_requisicion  detalle_requisicion[]
+  contratos            contratos_precio[]
+  alertas              alertas[]
+  lineas_erp           lineas_erp[]
+  parametros_bodega    parametros_bodega[]
+  sospechas            sospechas_duplicado[]
+
+  @@index([categoria_id])
+}
+
+// Las 8 líneas del ERP (A2) conservan su texto original y apuntan al material normalizado.
+model lineas_erp {
+  id                  Int                 @id @default(autoincrement())
+  numero              Int                 @unique
+  descripcion_erp     String              @db.VarChar(160)
+  area_id             Int
+  proveedor_id        Int
+  cantidad            Decimal             @db.Decimal(14, 3)
+  precio_unitario     Decimal             @db.Decimal(14, 2)
+  material_id         Int
+  estado_equivalencia estado_equivalencia
+  justificacion       String              @db.VarChar(400)
+
+  area      areas       @relation(fields: [area_id], references: [id])
+  proveedor proveedores @relation(fields: [proveedor_id], references: [id])
+  material  materiales  @relation(fields: [material_id], references: [id])
+
+  @@index([area_id])
+  @@index([proveedor_id])
+  @@index([material_id])
+}
+
+model proveedores {
+  id        Int      @id @default(autoincrement())
+  codigo    String   @unique @db.VarChar(20)
+  nombre    String   @db.VarChar(120)
+  activo    Boolean  @default(true)
+  creado_en DateTime @default(now())
+
+  contratos     contratos_precio[]
+  ordenes       ordenes_compra[]
+  requisiciones requisiciones[]
+  lineas_erp    lineas_erp[]
+}
+
+model contratos_precio {
+  id            Int      @id @default(autoincrement())
+  proveedor_id  Int
+  material_id   Int
+  precio        Decimal  @db.Decimal(14, 2)
+  vigente_desde DateTime @db.Date
+  vigente_hasta DateTime? @db.Date
+
+  proveedor proveedores @relation(fields: [proveedor_id], references: [id])
+  material  materiales  @relation(fields: [material_id], references: [id])
+
+  @@unique([proveedor_id, material_id, vigente_desde])
+  @@index([material_id])
+}
+
+model obras {
+  id      Int       @id @default(autoincrement())
+  codigo  String    @unique @db.VarChar(20)
+  nombre  String    @db.VarChar(120)
+  activa  Boolean   @default(true)
+  bodegas bodegas[]
+}
+
+// Toda ubicación física es una bodega; si pertenece a una obra, obra_id la vincula.
+model bodegas {
+  id      Int     @id @default(autoincrement())
+  codigo  String  @unique @db.VarChar(20)
+  nombre  String  @db.VarChar(120)
+  obra_id Int?
+  activa  Boolean @default(true)
+
+  obra              obras?       @relation(fields: [obra_id], references: [id])
+  inventario        inventario[]
+  movimientos_origen  movimientos[] @relation("origen")
+  movimientos_destino movimientos[] @relation("destino")
+  recepciones       recepciones[]
+  alertas           alertas[]
+  parametros_bodega parametros_bodega[]
+
+  @@index([obra_id])
+}
+
+// Ajuste opcional de parámetros cuando una bodega tiene demanda propia.
+model parametros_bodega {
+  material_id          Int
+  bodega_id            Int
+  demanda_promedio_dia Decimal @db.Decimal(14, 3)
+  demanda_maxima_dia   Decimal @db.Decimal(14, 3)
+  tiempo_entrega_dias  Int
+
+  material materiales @relation(fields: [material_id], references: [id])
+  bodega   bodegas    @relation(fields: [bodega_id], references: [id])
+
+  @@id([material_id, bodega_id])
+  @@index([bodega_id])
+}
+
+// ---------- Inventario ----------
+
+// Saldo derivado: se actualiza en la misma transacción que el movimiento y solo por esa vía.
+model inventario {
+  material_id    Int
+  bodega_id      Int
+  cantidad       Decimal  @default(0) @db.Decimal(14, 3)
+  actualizado_en DateTime @updatedAt
+
+  material materiales @relation(fields: [material_id], references: [id])
+  bodega   bodegas    @relation(fields: [bodega_id], references: [id])
+
+  @@id([material_id, bodega_id])
+  @@index([bodega_id])
+}
+
+// Fuente de verdad del stock. Registro inmutable: las correcciones se hacen con un AJUSTE.
+model movimientos {
+  id                 Int             @id @default(autoincrement())
+  tipo               tipo_movimiento
+  material_id        Int
+  cantidad           Decimal         @db.Decimal(14, 3)
+  bodega_origen_id   Int?
+  bodega_destino_id  Int?
+  fecha_movimiento   DateTime        @default(now())
+  usuario_id         Int
+  documento_tipo     tipo_documento
+  documento_numero   String          @db.VarChar(40)
+  orden_compra_id    Int?
+  detalle_recepcion_id Int?          @unique
+  observaciones      String?         @db.VarChar(400)
+  clave_idempotencia String          @unique @db.VarChar(80)
+  creado_en          DateTime        @default(now())
+
+  material  materiales      @relation(fields: [material_id], references: [id])
+  origen    bodegas?        @relation("origen", fields: [bodega_origen_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  destino   bodegas?        @relation("destino", fields: [bodega_destino_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  usuario   usuarios        @relation(fields: [usuario_id], references: [id])
+  orden     ordenes_compra? @relation(fields: [orden_compra_id], references: [id])
+  detalle_recepcion detalle_recepciones? @relation(fields: [detalle_recepcion_id], references: [id])
+
+  @@index([material_id, fecha_movimiento])
+  @@index([bodega_origen_id])
+  @@index([bodega_destino_id])
+  @@index([usuario_id])
+  @@index([orden_compra_id])
+}
+
+// ---------- Compras ----------
+
+model requisiciones {
+  id                        Int                @id @default(autoincrement())
+  numero                    String             @unique @db.VarChar(40)
+  area_id                   Int
+  solicitante_id            Int
+  proveedor_sugerido_id     Int?
+  alerta_id                 Int?
+  estado                    estado_requisicion @default(PENDIENTE)
+  justificacion             String             @db.VarChar(400)
+  cotizaciones              Int                @default(0)
+  monto_total               Decimal            @db.Decimal(14, 2)
+  monto_evaluado            Decimal            @db.Decimal(14, 2)
+  cotizaciones_requeridas   Int
+  fraccionamiento_sospechoso Boolean           @default(false)
+  fraccionamiento_detalle   Json?
+  creado_en                 DateTime           @default(now())
+
+  area        areas         @relation(fields: [area_id], references: [id])
+  solicitante usuarios      @relation(fields: [solicitante_id], references: [id])
+  proveedor   proveedores?  @relation(fields: [proveedor_sugerido_id], references: [id])
+  alerta      alertas?      @relation(fields: [alerta_id], references: [id])
+  detalle     detalle_requisicion[]
+  aprobaciones aprobaciones[]
+  ordenes     ordenes_compra[]
+
+  @@index([area_id, creado_en])
+  @@index([solicitante_id])
+  @@index([proveedor_sugerido_id])
+  @@index([alerta_id])
+  @@index([estado])
+}
+
+model detalle_requisicion {
+  id              Int     @id @default(autoincrement())
+  requisicion_id  Int
+  material_id     Int
+  cantidad        Decimal @db.Decimal(14, 3)
+  precio_estimado Decimal @db.Decimal(14, 2)
+
+  requisicion requisiciones @relation(fields: [requisicion_id], references: [id], onDelete: Cascade)
+  material    materiales    @relation(fields: [material_id], references: [id])
+
+  @@unique([requisicion_id, material_id])
+  @@index([material_id])
+}
+
+// Regla configurable: el primer tramo cuyo monto_hasta cubra el monto define quién aprueba.
+model matriz_aprobacion {
+  id                      Int      @id @default(autoincrement())
+  orden                   Int      @unique
+  monto_hasta             Decimal? @db.Decimal(14, 2)
+  rol_aprobador_id        Int
+  cotizaciones_requeridas Int
+  requiere_comite         Boolean  @default(false)
+
+  rol roles @relation(fields: [rol_aprobador_id], references: [id])
+
+  @@index([rol_aprobador_id])
+}
+
+model aprobaciones {
+  id              Int               @id @default(autoincrement())
+  requisicion_id  Int?
+  orden_compra_id Int?
+  paso            Int
+  rol_requerido_id Int
+  estado          estado_aprobacion @default(PENDIENTE)
+  usuario_id      Int?
+  fecha_decision  DateTime?
+  comentario      String?           @db.VarChar(400)
+  creado_en       DateTime          @default(now())
+
+  requisicion requisiciones?  @relation(fields: [requisicion_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  orden       ordenes_compra? @relation(fields: [orden_compra_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  rol         roles           @relation(fields: [rol_requerido_id], references: [id])
+  usuario     usuarios?       @relation(fields: [usuario_id], references: [id])
+
+  @@unique([requisicion_id, paso])
+  @@unique([orden_compra_id, paso])
+  @@index([rol_requerido_id, estado])
+  @@index([usuario_id])
+}
+
+model ordenes_compra {
+  id                        Int          @id @default(autoincrement())
+  numero                    String       @unique @db.VarChar(40)
+  requisicion_id            Int?
+  proveedor_id              Int
+  area_id                   Int
+  fecha_emision             DateTime     @db.Date
+  estado                    estado_orden
+  cotizaciones              Int          @default(0)
+  cotizaciones_requeridas   Int          @default(0)
+  total                     Decimal      @db.Decimal(14, 2)
+  monto_evaluado            Decimal      @db.Decimal(14, 2)
+  fraccionamiento_sospechoso Boolean     @default(false)
+  fraccionamiento_detalle   Json?
+  creado_por_id             Int
+  creado_en                 DateTime     @default(now())
+
+  requisicion requisiciones? @relation(fields: [requisicion_id], references: [id])
+  proveedor   proveedores    @relation(fields: [proveedor_id], references: [id])
+  area        areas          @relation(fields: [area_id], references: [id])
+  creado_por  usuarios       @relation(fields: [creado_por_id], references: [id])
+  detalle     detalle_orden_compra[]
+  aprobaciones aprobaciones[]
+  recepciones recepciones[]
+  movimientos movimientos[]
+  sospechas_a sospechas_duplicado[] @relation("orden_a")
+  sospechas_b sospechas_duplicado[] @relation("orden_b")
+
+  @@index([requisicion_id])
+  @@index([proveedor_id, fecha_emision])
+  @@index([area_id])
+  @@index([creado_por_id])
+  @@index([estado])
+}
+
+model detalle_orden_compra {
+  id              Int     @id @default(autoincrement())
+  orden_compra_id Int
+  material_id     Int
+  cantidad        Decimal @db.Decimal(14, 3)
+  precio_unitario Decimal @db.Decimal(14, 2)
+
+  orden      ordenes_compra @relation(fields: [orden_compra_id], references: [id], onDelete: Cascade)
+  material   materiales     @relation(fields: [material_id], references: [id])
+  recepciones detalle_recepciones[]
+
+  @@unique([orden_compra_id, material_id])
+  @@index([material_id])
+}
+
+model recepciones {
+  id              Int      @id @default(autoincrement())
+  numero          String   @unique @db.VarChar(40)
+  orden_compra_id Int
+  bodega_id       Int
+  usuario_id      Int
+  fecha           DateTime @default(now())
+  observaciones   String?  @db.VarChar(400)
+
+  orden   ordenes_compra @relation(fields: [orden_compra_id], references: [id])
+  bodega  bodegas        @relation(fields: [bodega_id], references: [id])
+  usuario usuarios       @relation(fields: [usuario_id], references: [id])
+  detalle detalle_recepciones[]
+
+  @@index([orden_compra_id])
+  @@index([bodega_id])
+  @@index([usuario_id])
+}
+
+model detalle_recepciones {
+  id                 Int     @id @default(autoincrement())
+  recepcion_id       Int
+  detalle_orden_id   Int
+  cantidad_recibida  Decimal @db.Decimal(14, 3)
+
+  recepcion recepciones          @relation(fields: [recepcion_id], references: [id], onDelete: Cascade)
+  detalle_orden detalle_orden_compra @relation(fields: [detalle_orden_id], references: [id])
+  movimiento movimientos?
+
+  @@index([recepcion_id])
+  @@index([detalle_orden_id])
+}
+
+// ---------- Control ----------
+
+model alertas {
+  id               Int              @id @default(autoincrement())
+  material_id      Int
+  bodega_id        Int?             // null = stock consolidado de todas las bodegas
+  stock_actual     Decimal          @db.Decimal(14, 3)
+  punto_reorden    Decimal          @db.Decimal(14, 3)
+  faltante         Decimal          @db.Decimal(14, 3)
+  prioridad        prioridad_alerta
+  estado           estado_alerta    @default(PENDIENTE)
+  clave_activa     String?          @unique @db.VarChar(40) // NULL al cerrar: permite solo una alerta abierta
+  comentario       String?          @db.VarChar(400)
+  creada_en        DateTime         @default(now())
+  actualizada_en   DateTime         @updatedAt
+  cerrada_en       DateTime?
+
+  material materiales @relation(fields: [material_id], references: [id])
+  bodega   bodegas?   @relation(fields: [bodega_id], references: [id])
+  requisiciones requisiciones[]
+
+  @@index([material_id])
+  @@index([bodega_id])
+  @@index([estado, prioridad])
+}
+
+model sospechas_duplicado {
+  id             Int                @id @default(autoincrement())
+  orden_a_id     Int
+  orden_b_id     Int
+  material_id    Int
+  confianza      confianza_sospecha
+  motivos        Json
+  estado         estado_sospecha    @default(PENDIENTE)
+  revisado_por_id Int?
+  revisado_en    DateTime?
+  comentario     String?            @db.VarChar(400)
+  creada_en      DateTime           @default(now())
+
+  orden_a  ordenes_compra @relation("orden_a", fields: [orden_a_id], references: [id])
+  orden_b  ordenes_compra @relation("orden_b", fields: [orden_b_id], references: [id])
+  material materiales     @relation(fields: [material_id], references: [id])
+  revisado_por usuarios?  @relation(fields: [revisado_por_id], references: [id])
+
+  @@unique([orden_a_id, orden_b_id, material_id])
+  @@index([orden_b_id])
+  @@index([material_id])
+  @@index([revisado_por_id])
+  @@index([estado])
+}
+
+// Umbrales configurables sin tocar el código (rúbrica B3).
+model parametros {
+  clave          String   @id @db.VarChar(60)
+  valor          String   @db.VarChar(120)
+  descripcion    String   @db.VarChar(300)
+  actualizado_en DateTime @updatedAt
+}
+
+// Registro inmutable de quién cambió qué.
+model auditoria {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int?
+  accion     String   @db.VarChar(40)
+  entidad    String   @db.VarChar(40)
+  entidad_id String   @db.VarChar(40)
+  antes      Json?
+  despues    Json?
+  creado_en  DateTime @default(now())
+
+  usuario usuarios? @relation(fields: [usuario_id], references: [id])
+
+  @@index([entidad, entidad_id])
+  @@index([usuario_id])
+  @@index([creado_en])
+}

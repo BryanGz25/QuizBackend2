@@ -1,0 +1,43 @@
+# Peticiones de ejemplo (extensión REST Client). Inicie la API y cargue los datos semilla.
+@api = http://localhost:3000/api
+@token = PEGUE_AQUI_EL_TOKEN_DEL_LOGIN
+
+### Estado y conexión a MySQL
+GET {{api}}/health
+
+### Iniciar sesión
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "bodega@delvalle.test", "password": "Demo2026!" }
+
+### Materiales
+GET {{api}}/materiales
+Authorization: Bearer {{token}}
+
+### Stock de un material
+GET {{api}}/materiales/1/stock
+Authorization: Bearer {{token}}
+
+### Registrar una salida
+POST {{api}}/movimientos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "tipo": "SALIDA", "materialId": 1, "cantidad": 30, "origenId": 1, "documentoTipo": "VALE_SALIDA", "documentoNumero": "VS-100", "claveIdempotencia": "prueba-salida-0001" }
+
+### Alertas de reorden
+GET {{api}}/alertas/reorden
+Authorization: Bearer {{token}}
+
+### Posibles duplicados
+GET {{api}}/ordenes/posibles-duplicados
+Authorization: Bearer {{token}}
+
+### Trazabilidad
+GET {{api}}/materiales/1/trazabilidad
+Authorization: Bearer {{token}}
+
+### Fuga de valor
+GET {{api}}/reportes/fuga-valor?mes=2026-10
+Authorization: Bearer {{token}}

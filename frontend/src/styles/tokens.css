@@ -1,0 +1,28 @@
+/* Tokens de diseño: la paleta sale del mundo de la obra (concreto, plano azul, señal de seguridad). */
+:root {
+  --concreto: #dfe2e1;
+  --superficie: #f6f7f6;
+  --blanco: #ffffff;
+  --grafito: #2b3238;
+  --grafito-2: #3b444b;
+  --plano: #1f4e79;
+  --plano-oscuro: #163a5c;
+  --plano-claro: #dbe7f2;
+  --seguridad: #f2b705;
+
+  --texto: #20262b;
+  --texto-2: #515c64;
+  --linea: #c9cfce;
+
+  --ok: #1f6b45;
+  --ok-bg: #dcefe4;
+  --aviso: #7a5600;
+  --aviso-bg: #fbeec4;
+  --peligro: #a3241c;
+  --peligro-bg: #f8dfdc;
+  --neutro-bg: #e6e9e9;
+
+  --radio: 3px;
+  --titulos: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --cuerpo: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
